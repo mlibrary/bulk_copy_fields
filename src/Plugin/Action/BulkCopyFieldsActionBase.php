@@ -8,6 +8,7 @@ use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Session\AccountInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\user\PrivateTempStoreFactory;
+use Drupal\Core\Session\SessionManagerInterface;
 
 /**
  * Copy Fields.
@@ -127,8 +128,7 @@ class BulkCopyFieldsActionBase extends ActionBase implements ContainerFactoryPlu
    * {@inheritdoc}
    */
   public function access($object, AccountInterface $account = NULL, $return_as_object = FALSE) {
-    $access = AccessResult::allowed();
-    return $return_as_object ? $access : $access->isAllowed();
+    return $object->access('edit', $account, TRUE);
   }
 
 }
