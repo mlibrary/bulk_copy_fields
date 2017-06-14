@@ -128,7 +128,7 @@ class BulkCopyFieldsActionBase extends ActionBase implements ContainerFactoryPlu
    * {@inheritdoc}
    */
   public function access($object, AccountInterface $account = NULL, $return_as_object = FALSE) {
-    return $object->access('edit', $account, TRUE);
+    return $object->access('update', $account, $return_as_object);
   }
 
 }
