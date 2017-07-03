@@ -50,6 +50,13 @@ class BulkCopyFieldsForm extends FormBase implements FormInterface {
   private $currentUser;
 
   /**
+   * The route builder.
+   *
+   * @var \Drupal\Core\Routing\RouteBuilderInterface
+   */
+  protected $routeBuilder;
+
+  /**
    * Constructs a \Drupal\bulk_copy_fields\Form\BulkCopyFieldsForm.
    *
    * @param \Drupal\user\PrivateTempStoreFactory $temp_store_factory
@@ -58,11 +65,14 @@ class BulkCopyFieldsForm extends FormBase implements FormInterface {
    *   Function construct session manager.
    * @param \Drupal\Core\Session\AccountInterface $current_user
    *   Function construct current user.
+   * @param \Drupal\Core\Routing\RouteBuilderInterface $route_builder
+   *   Route.
    */
-  public function __construct(PrivateTempStoreFactory $temp_store_factory, SessionManagerInterface $session_manager, AccountInterface $current_user) {
+  public function __construct(PrivateTempStoreFactory $temp_store_factory, SessionManagerInterface $session_manager, AccountInterface $current_user, RouteBuilderInterface $route_builder) {
     $this->tempStoreFactory = $temp_store_factory;
     $this->sessionManager = $session_manager;
     $this->currentUser = $current_user;
+    $this->routeBuilder = $route_builder;
   }
 
   /**
@@ -72,7 +82,8 @@ class BulkCopyFieldsForm extends FormBase implements FormInterface {
     return new static(
       $container->get('user.private_tempstore'),
       $container->get('session_manager'),
-      $container->get('current_user')
+      $container->get('current_user'),
+      $container->get('router.builder')
     );
   }
 
@@ -90,7 +101,7 @@ class BulkCopyFieldsForm extends FormBase implements FormInterface {
     $entities = $this->userInput['entities'];
     $fields = $this->userInput['fields'];
     $batch = [
-      'title' => t('Updating Fields...'),
+      'title' => $this->t('Updating Fields...'),
       'operations' => [
         [
           '\Drupal\bulk_copy_fields\BulkCopyFields::copyFields',
@@ -135,7 +146,7 @@ class BulkCopyFieldsForm extends FormBase implements FormInterface {
           $return_verify = $this->bulkCopyFields();
         }
         drupal_set_message($return_verify);
-        \Drupal::service("router.builder")->rebuild();
+        $this->routeBuilder->rebuild();
         break;
 
     }
@@ -149,7 +160,7 @@ class BulkCopyFieldsForm extends FormBase implements FormInterface {
     if (isset($this->form)) {
       $form = $this->form;
     }
-    $form['#title'] = t('Bulk Copy Fields');
+    $form['#title'] = $this->t('Bulk Copy Fields');
     $submit_label = 'Next';
 
     switch ($this->step) {
@@ -159,7 +170,7 @@ class BulkCopyFieldsForm extends FormBase implements FormInterface {
           ->get('bulk_copy_fields_ids')
           ->get($this->currentUser->id());
         $options = [];
-        foreach ($this->userInput['entities'] as $id => $entity) {
+        foreach ($this->userInput['entities'] as $entity) {
           $this->entity = $entity;
           $fields = $entity->getFieldDefinitions();
           foreach ($fields as $field) {
@@ -169,14 +180,14 @@ class BulkCopyFieldsForm extends FormBase implements FormInterface {
           }
         }
         $header = [
-          'field_name' => t('Field Name'),
+          'field_name' => $this->t('Field Name'),
         ];
-        $form['#title'] .= ' - ' . t('Select Fields to Copy Values From');
+        $form['#title'] .= ' - ' . $this->t('Select Fields to Copy Values From');
         $form['table'] = [
           '#type' => 'tableselect',
           '#header' => $header,
           '#options' => $options,
-          '#empty' => t('No fields found'),
+          '#empty' => $this->t('No fields found'),
         ];
         break;
 
@@ -184,7 +195,7 @@ class BulkCopyFieldsForm extends FormBase implements FormInterface {
         // Get all fields possible.
         $all_options = [];
         $field_types = [];
-        foreach ($this->userInput['entities'] as $id => $entity) {
+        foreach ($this->userInput['entities'] as $entity) {
           $fields = $entity->getFieldDefinitions();
           foreach ($fields as $field) {
             if ($field->getFieldStorageDefinition()->isBaseField() === FALSE) {
@@ -192,6 +203,10 @@ class BulkCopyFieldsForm extends FormBase implements FormInterface {
               // Allow er rev to map with er.
               if (strpos($type, 'entity_reference_revisions') !== FALSE) {
                 $type = 'entity_reference';
+              }
+              // Allow string_long to map with text_with_summary and vice versa.
+              if (in_array($type, ['string_long', 'text_with_summary'])) {
+                $type = 'string_long_or_text_with_summary';
               }
               $all_options[$field->getName()] = $type;
               $field_types[$type][$field->getName()] = $field->getName();
@@ -202,16 +217,16 @@ class BulkCopyFieldsForm extends FormBase implements FormInterface {
           $options = array_unique($field_types[$all_options[$field_name]]);
           $form[$field_name] = [
             '#type' => 'select',
-            '#title' => t('From Field @field_name To Field:', ['@field_name' => $field_name]),
+            '#title' => $this->t('From Field @field_name To Field:', ['@field_name' => $field_name]),
             '#options' => $options,
             '#default_value' => $options[$field_name],
           ];
         }
-        $form['#title'] .= ' - ' . t('Enter New Field to copy values to');
+        $form['#title'] .= ' - ' . $this->t('Enter New Field to copy values to');
         break;
 
       case 3:
-        $form['#title'] .= ' - ' . t('Are you sure you want to copy @count_fields fields on @count_entities entities?',
+        $form['#title'] .= ' - ' . $this->t('Are you sure you want to copy @count_fields fields on @count_entities entities?',
                                      [
                                        '@count_fields' => count($this->userInput['fields']),
                                        '@count_entities' => count($this->userInput['entities']),
@@ -220,7 +235,7 @@ class BulkCopyFieldsForm extends FormBase implements FormInterface {
         break;
 
     }
-    drupal_set_message('This module is experiemental. PLEASE do not use on production databases without prior testing and a complete database dump.', 'warning');
+    drupal_set_message($this->t('This module is experiemental. PLEASE do not use on production databases without prior testing and a complete database dump.'), 'warning');
     $form['actions']['submit'] = [
       '#type' => 'submit',
       '#value' => $submit_label,

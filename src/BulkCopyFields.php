@@ -14,7 +14,7 @@ class BulkCopyFields {
     $message = 'Copying Fields...';
     $results = [];
     $copy = FALSE;
-    foreach ($entities as $id => $entity) {
+    foreach ($entities as $entity) {
       foreach ($fields as $field_from => $field_to) {
         if ($entity->hasField($field_from) && $entity->hasField($field_to)) {
           $values = $entity->get($field_from)->getValue();
@@ -24,7 +24,13 @@ class BulkCopyFields {
           // Check for entity reference and entity reference revisions.
           if ((strpos($field_def_to->getType(), 'entity_reference') !== FALSE) || (strpos($field_def_to->getType(), 'entity_reference') !== FALSE)) {
             if (($target_type_to = $field_def_to->getSetting('target_type')) != ($target_type_from = $field_def_from->getSetting('target_type'))) {
-              drupal_set_message("The from field " . $field_from . " has target type " . $target_type_from . " and does not match the to field " . $field_to . " target type " . $target_type_to, 'error');
+              drupal_set_message(t("The from field @field_from has target type @target_type_from and does not match the to field @field_to target type @target_type_to",
+                [
+                  '@field_from' => $field_from,
+                  '@target_type_from' => $target_type_from,
+                  '@field_to' => $field_to,
+                  '@target_type_to' => $target_type_to,
+                ]), 'error');
               continue;
             }
             // Check for entity reference to entity reference revisions.
@@ -52,7 +58,7 @@ class BulkCopyFields {
   /**
    * {@inheritdoc}
    */
-  private function bulkCopyFieldsFinishedCallback($success, $results, $operations) {
+  public function bulkCopyFieldsFinishedCallback($success, $results, $operations) {
     if ($success) {
       $message = \Drupal::translation()->formatPlural(
         count($results),

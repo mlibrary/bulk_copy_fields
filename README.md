@@ -1,8 +1,8 @@
 # bulk_copy_fields  
-a drupal 8 module that adds an action to bulk copy values from one field to another  
+drupal 8 module that adds action to bulk copy values from one field to another  
 
 <strong>Synopsis</strong>  
-A module for those who need to bulk copy field values in nodes or other entities to another field in the entity.  
+Bulk copy field values in entities to another field in the entity.  
   
 <strong>Similar Projects</strong>  
 None known  

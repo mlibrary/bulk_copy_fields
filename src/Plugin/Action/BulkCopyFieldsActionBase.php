@@ -3,7 +3,6 @@
 namespace Drupal\bulk_copy_fields\Plugin\Action;
 
 use Drupal\Core\Action\ActionBase;
-use Drupal\Core\Access\AccessResult;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Session\AccountInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
