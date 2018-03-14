@@ -62,7 +62,7 @@ class BulkCopyFields {
     if ($success) {
       $message = \Drupal::translation()->formatPlural(
         count($results),
-        'One operations processed.', '@count operations processed.'
+        'One operation processed.', '@count operations processed.'
       );
     }
     else {
