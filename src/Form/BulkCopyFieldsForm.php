@@ -121,7 +121,6 @@ class BulkCopyFieldsForm extends FormBase implements FormInterface {
   public function submitForm(array &$form, FormStateInterface $form_state) {
     switch ($this->step) {
       case 1:
-        $this->userInput['fields'] = array_filter($form_state->getValues()['table']);
         $form_state->setRebuild();
         break;
 
@@ -193,29 +192,8 @@ class BulkCopyFieldsForm extends FormBase implements FormInterface {
         break;
 
       case 2:
-        // Get all fields possible.
-        $all_options = [];
-        $field_types = [];
-        foreach ($this->userInput['entities'] as $entity) {
-          $fields = $entity->getFieldDefinitions();
-          foreach ($fields as $field) {
-            if ($field->getFieldStorageDefinition()->isBaseField() === FALSE) {
-              $type = $field->getType();
-              // Allow er rev to map with er.
-              if (strpos($type, 'entity_reference_revisions') !== FALSE) {
-                $type = 'entity_reference';
-              }
-              // Allow string_long to map with text_with_summary and vice versa.
-              if (in_array($type, ['string_long', 'text_with_summary'])) {
-                $type = 'string_long_or_text_with_summary';
-              }
-              $all_options[$field->getName()] = $type;
-              $field_types[$type][$field->getName()] = $field->getName();
-            }
-          }
-        }
         foreach ($this->userInput['fields'] as $field_name) {
-          $options = array_unique($field_types[$all_options[$field_name]]);
+          $options = $this->userInput['field_options'][$field_name];
           $form[$field_name] = [
             '#type' => 'select',
             '#title' => $this->t('From Field @field_name To Field:', ['@field_name' => $field_name]),
@@ -249,7 +227,44 @@ class BulkCopyFieldsForm extends FormBase implements FormInterface {
    * {@inheritdoc}
    */
   public function validateForm(array &$form, FormStateInterface $form_state) {
-    // TODO.
+    switch ($this->step) {
+      case 1:
+        // Get all fields possible.
+        $all_options = [];
+        $field_types = [];
+        $this->userInput['fields'] = array_filter($form_state->getValues()['table']);
+        if (empty($this->userInput['fields'])) {
+          $form_state->setError($form, $this->t('No fields selected.'));
+        }
+        // Match field types.
+        foreach ($this->userInput['entities'] as $entity) {
+          $fields = $entity->getFieldDefinitions();
+          foreach ($fields as $field) {
+            if ($field->getFieldStorageDefinition()->isBaseField() === FALSE) {
+              $type = $field->getType();
+              // Allow er rev to map with er.
+              if (strpos($type, 'entity_reference_revisions') !== FALSE) {
+                $type = 'entity_reference';
+              }
+              // Allow string_long to map with text_with_summary and vice versa.
+              if (in_array($type, ['string_long', 'text_with_summary'])) {
+                $type = 'string_long_or_text_with_summary';
+              }
+              $all_options[$field->getName()] = $type;
+              $field_types[$type][$field->getName()] = $field->getName();
+            }
+          }
+        }
+        // Unset same field and throw error if no fields to copy to.
+        foreach ($this->userInput['fields'] as $field_name) {
+          $this->userInput['field_options'][$field_name] = array_unique($field_types[$all_options[$field_name]]);
+          unset($this->userInput['field_options'][$field_name][$field_name]);
+          if (empty($this->userInput['field_options'][$field_name])) {
+            $form_state->setError($form, $this->t('No fields of the same type to copy to on @field', ['@field' => $field_name]));
+          }
+        }
+      break;
+    }
   }
 
 }

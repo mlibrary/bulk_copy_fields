@@ -12,7 +12,8 @@ class BulkCopyFields {
    */
   public static function copyFields($entities, $fields, &$context) {
     $message = 'Copying Fields...';
-    $results = [];
+    $results_entities = [];
+    $results_fields = [];
     $copy = FALSE;
     foreach ($entities as $entity) {
       foreach ($fields as $field_from => $field_to) {
@@ -22,7 +23,7 @@ class BulkCopyFields {
           $field_def_from = $entity->get($field_from)->getFieldDefinition()->getFieldStorageDefinition();
 
           // Check for entity reference and entity reference revisions.
-          if ((strpos($field_def_to->getType(), 'entity_reference') !== FALSE) || (strpos($field_def_to->getType(), 'entity_reference') !== FALSE)) {
+          if ((strpos($field_def_to->getType(), 'entity_reference') !== FALSE) || (strpos($field_def_from->getType(), 'entity_reference') !== FALSE)) {
             if (($target_type_to = $field_def_to->getSetting('target_type')) != ($target_type_from = $field_def_from->getSetting('target_type'))) {
               drupal_set_message(t("The from field @field_from has target type @target_type_from and does not match the to field @field_to target type @target_type_to",
                 [
@@ -44,26 +45,36 @@ class BulkCopyFields {
 
           $entity->get($field_to)->setValue($values);
           $copy = TRUE;
+          if (!in_array($field_to, $results_fields)) {
+            $results_fields[] = $field_to;
+          }
         }
       }
       if ($copy) {
         $entity->setNewRevision();
         $entity->save();
+        $results_entities[] = $entity->id();
       }
     }
     $context['message'] = $message;
-    $context['results'] = $results;
+    $context['results']['results_entities'] = $results_entities;
+    $context['results']['results_fields'] = $results_fields;
   }
 
   /**
    * {@inheritdoc}
    */
-  public function bulkCopyFieldsFinishedCallback($success, $results, $operations) {
+  public static function bulkCopyFieldsFinishedCallback($success, $results, $operations) {
     if ($success) {
-      $message = \Drupal::translation()->formatPlural(
-        count($results),
-        'One operation processed.', '@count operations processed.'
+      $message_field = \Drupal::translation()->formatPlural(
+        count($results['results_fields']),
+        'One field processed', '@count fields processed'
       );
+      $message_entity = \Drupal::translation()->formatPlural(
+        count($results['results_entities']),
+        'One entity', '@count entities'
+      );
+      $message = $message_field.' on '.$message_entity;
     }
     else {
       $message = t('Finished with an error.');
