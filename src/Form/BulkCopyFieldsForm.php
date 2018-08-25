@@ -10,6 +10,8 @@ use Drupal\Core\Session\SessionManagerInterface;
 use Drupal\user\PrivateTempStoreFactory;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\Core\Routing\RouteBuilderInterface;
+use Drupal\Core\Language\LanguageManager;
+use Drupal\Core\Language\LanguageInterface;
 
 /**
  * Bulk Copy Fields Form.
@@ -21,7 +23,7 @@ class BulkCopyFieldsForm extends FormBase implements FormInterface {
    *
    * @var step
    */
-  protected $step = 1;
+  protected $step = 0;
   /**
    * Keep track of user input.
    *
@@ -58,6 +60,13 @@ class BulkCopyFieldsForm extends FormBase implements FormInterface {
   protected $routeBuilder;
 
   /**
+   * The language manager.
+   *
+   * @var \Drupal\Core\Language\LanguageManager
+   */
+  protected $languageManager;
+
+  /**
    * Constructs a \Drupal\bulk_copy_fields\Form\BulkCopyFieldsForm.
    *
    * @param \Drupal\user\PrivateTempStoreFactory $temp_store_factory
@@ -68,12 +77,15 @@ class BulkCopyFieldsForm extends FormBase implements FormInterface {
    *   Function construct current user.
    * @param \Drupal\Core\Routing\RouteBuilderInterface $route_builder
    *   Route.
+   * @param \Drupal\Core\Language\LanguageManager $language_manager
+   *   LanguageManager.
    */
-  public function __construct(PrivateTempStoreFactory $temp_store_factory, SessionManagerInterface $session_manager, AccountInterface $current_user, RouteBuilderInterface $route_builder) {
+  public function __construct(PrivateTempStoreFactory $temp_store_factory, SessionManagerInterface $session_manager, AccountInterface $current_user, RouteBuilderInterface $route_builder, LanguageManager $language_manager) {
     $this->tempStoreFactory = $temp_store_factory;
     $this->sessionManager = $session_manager;
     $this->currentUser = $current_user;
     $this->routeBuilder = $route_builder;
+    $this->languageManager = $language_manager;
   }
 
   /**
@@ -84,7 +96,8 @@ class BulkCopyFieldsForm extends FormBase implements FormInterface {
       $container->get('user.private_tempstore'),
       $container->get('session_manager'),
       $container->get('current_user'),
-      $container->get('router.builder')
+      $container->get('router.builder'),
+      $container->get('language_manager')
     );
   }
 
@@ -101,12 +114,13 @@ class BulkCopyFieldsForm extends FormBase implements FormInterface {
   public function bulkCopyFields() {
     $entities = $this->userInput['entities'];
     $fields = $this->userInput['fields'];
+    $languages = $this->userInput['languages'];
     $batch = [
       'title' => $this->t('Updating Fields...'),
       'operations' => [
         [
           '\Drupal\bulk_copy_fields\BulkCopyFields::copyFields',
-          [$entities, $fields],
+          [$entities, $fields, $languages],
         ],
       ],
       'finished' => '\Drupal\bulk_copy_fields\BulkCopyFields::bulkCopyFieldsFinishedCallback',
@@ -120,6 +134,9 @@ class BulkCopyFieldsForm extends FormBase implements FormInterface {
    */
   public function submitForm(array &$form, FormStateInterface $form_state) {
     switch ($this->step) {
+      case 0:
+        $form_state->setRebuild();
+        break;
       case 1:
         $form_state->setRebuild();
         break;
@@ -164,11 +181,28 @@ class BulkCopyFieldsForm extends FormBase implements FormInterface {
     $submit_label = 'Next';
 
     switch ($this->step) {
-      case 1:
+      case 0:
         // Retrieve IDs from the temporary storage.
         $this->userInput['entities'] = $this->tempStoreFactory
           ->get('bulk_copy_fields_ids')
           ->get($this->currentUser->id());
+        $languages = $this->languageManager->getLanguages(LanguageInterface::STATE_ALL);
+        $options = [];
+        foreach($languages as $language) {
+          $options[$language->getId()]['field_name'] = $language->getName();
+        }
+        $header = [
+          'field_name' => $this->t('Installed Languages to use Bulk Copy Fields on'),
+        ];
+        $form['#title'] .= ' - ' . $this->t('Select Languages to Copy Values From and To');
+        $form['table'] = [
+          '#type' => 'tableselect',
+          '#header' => $header,
+          '#options' => $options,
+          '#empty' => $this->t('No languages found'),
+        ];
+        break;
+      case 1:
         $options = [];
         foreach ($this->userInput['entities'] as $entity) {
           $this->entity = $entity;
@@ -228,6 +262,12 @@ class BulkCopyFieldsForm extends FormBase implements FormInterface {
    */
   public function validateForm(array &$form, FormStateInterface $form_state) {
     switch ($this->step) {
+      case 0:
+        $this->userInput['languages'] = array_filter($form_state->getValues()['table']);
+        if (empty($this->userInput['languages'])) {
+          $form_state->setError($form, $this->t('No languages selected.'));
+        }
+        break;
       case 1:
         // Get all fields possible.
         $all_options = [];
