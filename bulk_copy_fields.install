@@ -1,0 +1,14 @@
+<?php
+/**
+ * @file
+ * Contains install and update functions for Bulk Copy Fields.
+ */
+
+/**
+ * Implements hook_install().
+ */
+function bulk_copy_fields_install() {
+  foreach (\Drupal::entityTypeManager()->getDefinitions() as $entity_type_machine_name => $entity_type) {
+    _bulk_copy_fields_create_action($entity_type_machine_name, $entity_type->getLabel());
+  }
+}

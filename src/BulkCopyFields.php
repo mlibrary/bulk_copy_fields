@@ -22,9 +22,10 @@ class BulkCopyFields {
           foreach ($fields as $field_from => $field_to) {
             if ($entity->hasField($field_from) && $entity->hasField($field_to)) {
               $values = $entity->get($field_from)->getValue();
-              $field_def_to = $entity->get($field_to)->getFieldDefinition()->getFieldStorageDefinition();
-              $field_def_from = $entity->get($field_from)->getFieldDefinition()->getFieldStorageDefinition();
-
+              $f_def_to = $entity->get($field_to)->getFieldDefinition();
+              $f_def_from = $entity->get($field_from)->getFieldDefinition();
+              $field_def_to = $f_def_to->getFieldStorageDefinition();
+              $field_def_from = $f_def_from->getFieldStorageDefinition();
               // Check for entity reference and entity reference revisions.
               if ((strpos($field_def_to->getType(), 'entity_reference') !== FALSE) || (strpos($field_def_from->getType(), 'entity_reference') !== FALSE)) {
                 if (($target_type_to = $field_def_to->getSetting('target_type')) != ($target_type_from = $field_def_from->getSetting('target_type'))) {
@@ -36,6 +37,30 @@ class BulkCopyFields {
                       '@target_type_to' => $target_type_to,
                     ]), 'error');
                   continue;
+                }
+                // check that all values are allowed in to field
+                $item_def_to = $f_def_to->getItemDefinition()->getSettings();
+                $item_def_from = $f_def_from->getItemDefinition()->getSettings();
+                if (isset($item_def_to['handler_settings']['target_bundles'])) {
+                  $remove_bundles = [];
+                  if (isset($item_def_from['handler_settings']['target_bundles'])) {
+                    $remove_bundles = array_diff($item_def_from['handler_settings']['target_bundles'],
+                                                 $item_def_to['handler_settings']['target_bundles']);
+                  }
+                  if (!empty($remove_bundles)) {
+                    foreach ($values as $key => $value) {
+                      $value_entity = \Drupal::entityTypeManager()->getStorage($item_def_from['target_type'])->load($value['target_id']);
+                      if (in_array($value_entity->bundle(), $remove_bundles)) {
+                        unset($values[$key]);
+                      }
+                    }
+                    drupal_set_message(t("The <b>from field</b> - <i>@field_from</i> - has values that do not match the <b>to field's</b> - <i>@field_to</i> - target bundles (<i>@bundles</i>).<br/><b><i>Those values have been removed</i></b>.",
+                    [
+                      '@field_from' => $field_from,
+                      '@field_to' => $field_to,
+                      '@bundles' => implode(', ', $remove_bundles),
+                    ]), 'warning');
+                  }
                 }
                 // Check for entity reference to entity reference revisions.
                 if ($field_def_to->getType() == 'entity_reference_revisions' && $field_def_from->getType() == 'entity_reference') {
@@ -53,7 +78,11 @@ class BulkCopyFields {
             }
           }
           if ($copy) {
-            $entity->setNewRevision();
+            // setNewRevision method exists on user but throws an error if called.
+            // TODO?: Do other entity types need revisions set?
+            if ($entity->getEntityTypeId() == 'node' && method_exists($entity, 'setNewRevision')) {
+              $entity->setNewRevision();
+            }
             $entity->save();
             $results_entities[] = $entity->id();
           }
