@@ -2,6 +2,7 @@ name: Bulk Copy Fields
 type: module
 description: Bulk copy field values from one field to another
 core: 8.x
+core_version_requirement: ^8 || ^9
 
 dependencies:
   - drupal:action

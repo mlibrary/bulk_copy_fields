@@ -29,13 +29,13 @@ class BulkCopyFields {
               // Check for entity reference and entity reference revisions.
               if ((strpos($field_def_to->getType(), 'entity_reference') !== FALSE) || (strpos($field_def_from->getType(), 'entity_reference') !== FALSE)) {
                 if (($target_type_to = $field_def_to->getSetting('target_type')) != ($target_type_from = $field_def_from->getSetting('target_type'))) {
-                  drupal_set_message(t("The from field @field_from has target type @target_type_from and does not match the to field @field_to target type @target_type_to",
+                  \Drupal::messenger()->addError(t("The from field @field_from has target type @target_type_from and does not match the to field @field_to target type @target_type_to",
                     [
                       '@field_from' => $field_from,
                       '@target_type_from' => $target_type_from,
                       '@field_to' => $field_to,
                       '@target_type_to' => $target_type_to,
-                    ]), 'error');
+                    ]));
                   continue;
                 }
                 // check that all values are allowed in to field
@@ -54,12 +54,12 @@ class BulkCopyFields {
                         unset($values[$key]);
                       }
                     }
-                    drupal_set_message(t("The <b>from field</b> - <i>@field_from</i> - has values that do not match the <b>to field's</b> - <i>@field_to</i> - target bundles (<i>@bundles</i>).<br/><b><i>Those values have been removed</i></b>.",
+                    \Drupal::messenger()->addWarning(t("The <b>from field</b> - <i>@field_from</i> - has values that do not match the <b>to field's</b> - <i>@field_to</i> - target bundles (<i>@bundles</i>).<br/><b><i>Those values have been removed</i></b>.",
                     [
                       '@field_from' => $field_from,
                       '@field_to' => $field_to,
                       '@bundles' => implode(', ', $remove_bundles),
-                    ]), 'warning');
+                    ]));
                   }
                 }
                 // Check for entity reference to entity reference revisions.
@@ -115,7 +115,7 @@ class BulkCopyFields {
     else {
       $message = t('Finished with an error.');
     }
-    drupal_set_message($message);
+    \Drupal::messenger()->addStatus($message);
   }
 
 }

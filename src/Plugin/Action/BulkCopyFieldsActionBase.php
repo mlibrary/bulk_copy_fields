@@ -6,7 +6,7 @@ use Drupal\Core\Action\ActionBase;
 use Drupal\Core\Plugin\ContainerFactoryPluginInterface;
 use Drupal\Core\Session\AccountInterface;
 use Symfony\Component\DependencyInjection\ContainerInterface;
-use Drupal\user\PrivateTempStoreFactory;
+use Drupal\Core\TempStore\PrivateTempStoreFactory;
 use Drupal\Core\Session\SessionManagerInterface;
 
 /**
@@ -50,7 +50,7 @@ class BulkCopyFieldsActionBase extends ActionBase implements ContainerFactoryPlu
   /**
    * The tempstore factory.
    *
-   * @var \Drupal\user\PrivateTempStoreFactory
+   * @var \Drupal\Core\TempStore\PrivateTempStoreFactory
    */
   protected $tempStoreFactory;
 
@@ -77,7 +77,7 @@ class BulkCopyFieldsActionBase extends ActionBase implements ContainerFactoryPlu
    *   The plugin_id for the plugin instance.
    * @param mixed $plugin_definition
    *   The plugin implementation definition.
-   * @param \Drupal\user\PrivateTempStoreFactory $temp_store_factory
+   * @param \Drupal\Core\TempStore\PrivateTempStoreFactory $temp_store_factory
    *   The tempstore factory.
    * @param \Drupal\Core\Session\SessionManagerInterface $session_manager
    *   The session.
@@ -98,7 +98,7 @@ class BulkCopyFieldsActionBase extends ActionBase implements ContainerFactoryPlu
    */
   public static function create(ContainerInterface $container, array $configuration, $plugin_id, $plugin_definition) {
     return new static($configuration, $plugin_id, $plugin_definition,
-      $container->get('user.private_tempstore'),
+      $container->get('tempstore.private'),
       $container->get('session_manager'),
       $container->get('current_user')
     );

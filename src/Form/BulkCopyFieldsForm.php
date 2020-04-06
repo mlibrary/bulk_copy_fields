@@ -7,7 +7,7 @@ use Drupal\Core\Form\FormInterface;
 use Drupal\Core\Form\FormStateInterface;
 use Drupal\Core\Session\AccountInterface;
 use Drupal\Core\Session\SessionManagerInterface;
-use Drupal\user\PrivateTempStoreFactory;
+use Drupal\Core\TempStore\PrivateTempStoreFactory;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Drupal\Core\Routing\RouteBuilderInterface;
 use Drupal\Core\Language\LanguageManager;
@@ -34,7 +34,7 @@ class BulkCopyFieldsForm extends FormBase implements FormInterface {
   /**
    * To store input.
    *
-   * @var \Drupal\user\PrivateTempStoreFactory
+   * @var \Drupal\Core\TempStore\PrivateTempStoreFactory
    */
   protected $tempStoreFactory;
 
@@ -69,7 +69,7 @@ class BulkCopyFieldsForm extends FormBase implements FormInterface {
   /**
    * Constructs a \Drupal\bulk_copy_fields\Form\BulkCopyFieldsForm.
    *
-   * @param \Drupal\user\PrivateTempStoreFactory $temp_store_factory
+   * @param \Drupal\Core\TempStore\PrivateTempStoreFactory $temp_store_factory
    *   Function construct temp store factory.
    * @param \Drupal\Core\Session\SessionManagerInterface $session_manager
    *   Function construct session manager.
@@ -93,7 +93,7 @@ class BulkCopyFieldsForm extends FormBase implements FormInterface {
    */
   public static function create(ContainerInterface $container) {
     return new static(
-      $container->get('user.private_tempstore'),
+      $container->get('tempstore.private'),
       $container->get('session_manager'),
       $container->get('current_user'),
       $container->get('router.builder'),
@@ -162,7 +162,7 @@ class BulkCopyFieldsForm extends FormBase implements FormInterface {
         if (method_exists($this, 'bulkCopyFields')) {
           $return_verify = $this->bulkCopyFields();
         }
-        drupal_set_message($return_verify);
+        \Drupal::messenger()->addStatus($return_verify);
         $this->routeBuilder->rebuild();
         break;
 
@@ -248,7 +248,7 @@ class BulkCopyFieldsForm extends FormBase implements FormInterface {
         break;
 
     }
-    drupal_set_message($this->t('This module is experiemental. PLEASE do not use on production databases without prior testing and a complete database dump.'), 'warning');
+    \Drupal::messenger()->addWarning($this->t('This module is experiemental. PLEASE do not use on production databases without prior testing and a complete database dump.'));
     $form['actions']['submit'] = [
       '#type' => 'submit',
       '#value' => $submit_label,
